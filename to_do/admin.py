@@ -1,28 +1,29 @@
 from django.contrib import admin
 from .models import ToDoList
-from django.contrib import messages
-from django import forms
-# class ToDoAdminForm(forms.ModelForm):
-#     class Meta:
-#         model = ToDoList
-#         fields = '__all__'
-
-#     def clean(self):
-#         raise forms.ValidationError({'user': "User Mismatch"})
-
+from django.utils.html import format_html
+from django.db import models
 class ToDoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'item', 'completed',)
-
-    def changelist_view(self, request, extra_context=None):
-
-        print(request.user)
-        print(extra_context)
-        # if self.user:
-        #     self.list_display = ('name', )
-        #     # if you dont want any links to the change_form
-        self.list_display_links = None
-        return super(ToDoAdmin, self).changelist_view(request, extra_context)
-
+    list_display = ('id_link', 'item', 'completed',)
+    change_list_template = 'admin/to_do/change_list.html'
+    list_display_links = None
+    editable_objs = []
+    def id_link(self, obj):
+        if obj in self.editable_objs:
+            return format_html("<a href='{id}'>{id}</a>",
+                               id=obj.id,
+                               )
+        else:
+            return format_html("{id}",
+                               id=obj.id,
+                               )
+    id_link.short_description = 'ID'
+    id_link.allow_tags = True
+    id_link.admin_order_field = '_id_link'
+    def get_queryset(self, request):
+        self.editable_objs = ToDoList.objects.filter(user=request.user)
+        return super(ToDoAdmin, self).get_queryset(
+            request,
+        ).annotate(_id_link=models.Count('id'))
     def get_form(self, request, obj=None, **kwargs):
         form = super(ToDoAdmin, self).get_form(request, obj, **kwargs)
         form.base_fields['user'].initial = request.user
